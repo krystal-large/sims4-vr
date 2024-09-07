@@ -84,6 +84,37 @@ def dprnt(txt):
 dprnt("module loading initiated")
 pid = os.getpid()
 
+
+# Snapshot VR current properties to the log
+def snapshot_vr_properties():
+    dprnt("VR Properties Snapshot:")
+    dprnt(f"Headset Position: {headset_position}")
+    dprnt(f"Headset Rotation: {headset_rotation}")
+    dprnt(f"Origin Camera Position: {origin_sims_camera_pos}")
+    dprnt(f"Origin Rotate: {origin_rotate}")
+    dprnt(f"Extra Rotate: {extra_rotate}")
+    dprnt(f"Camera Position: {get_cam_pos()}")
+    dprnt(f"Camera Rotation: {get_cam_rot()}")
+
+log_dll_details()
+
+
+# Add this function to inspect and log DLL details
+def log_dll_details():
+    global vrdll
+    dprnt("s4vrlib.dll functions:")
+    for func_name in dir(vrdll):
+        if not func_name.startswith('_'):
+            func = getattr(vrdll, func_name)
+            if hasattr(func, 'argtypes'):
+                dprnt(f"  {func_name}: {func.argtypes} -> {func.restype}")
+            else:
+                dprnt(f"  {func_name}: No argument type information")
+
+log_dll_details()
+
+
+
 #function we need is:
 _vpxInit = 0
 _vpxFree = 0
@@ -120,6 +151,11 @@ Scale_patch_address2 = 0x1410105F5
 
 #code_injection_base_address is the address where we patch the exacutable to change the games behavior 
 code_injection_base_address = 0x1401F810E
+
+# VR Configuration
+VR_SNAPSHOT_BUTTON = 4  # Button for VR property snapshot
+VR_TRANSLATION_SPEED = 0.01  # Speed of camera translation
+VR_ROTATION_SPEED = 1.0  # Speed of camera rotation
 
 
 def find_pach_locations():
@@ -374,6 +410,9 @@ vrdll.get_button_value.restype = ctypes.c_ulonglong
 vrdll.set_follow.argtypes = [ctypes.c_int]
 vrdll.get_float_value.argtypes = [ctypes.c_int]
 vrdll.get_float_value.restype  = ctypes.c_float
+
+vrdll.set_float_value.argtypes = [ctypes.c_int, ctypes.c_float]
+vrdll.set_float_value.restype = ctypes.c_float
 
 dprnt("initiating vrdll")
 vrdll.init()
@@ -651,29 +690,13 @@ class Object(object):
 follow_active = 0
 #When the game informs us that it has executed a game frame
 def on_game_frame():
-    global patch_frame_counter
-    global keypress_bebounce_count
-    global cam_syncing
-    global vr_active
-    global tab_active
-    global game_desired_cam_pos
-    global game_camera_scalew
-    global game_camera_scale
-    global hold_b_button_frame_counter
-    global last_btns_press
-    global holding_grab
-    global follow_active
-    global holding_trig
-    global before_sync_cam_location
-    global origin_sims_camera_pos
-    global origin_sims_camera_pos
-    global headset_offset
-    global extra_rotate
-    global origin_rotate
-    global controller_state
-    global FireID
-    global sims_camera_address
-    global known_sruct_locations
+    global patch_frame_counter, keypress_bebounce_count, cam_syncing, vr_active, tab_active
+    global game_desired_cam_pos, game_camera_scalew, game_camera_scale, hold_b_button_frame_counter
+    global last_btns_press, holding_grab, follow_active, holding_trig, before_sync_cam_location
+    global origin_sims_camera_pos, origin_sims_camera_rot, headset_offset, extra_rotate, origin_rotate
+    global controller_state, FireID, sims_camera_address, known_sruct_locations
+
+    global VR_SNAPSHOT_BUTTON, VR_TRANSLATION_SPEED, VR_ROTATION_SPEED
     
     #Handle input from the debug TCP connection
     handle_dbg_com()
@@ -725,6 +748,39 @@ def on_game_frame():
     elif controller_state.ButtonsPressed == 25769803780:
         controller_state.Trigger = 1
         controller_state.Grip = 1
+
+    # Check for snapshot button press
+    if controller_state.ButtonsPressed == VR_SNAPSHOT_BUTTON:
+        snapshot_vr_properties()
+
+    # VR Camera Control
+    if vr_active:
+        # Translational movement
+        origin_sims_camera_pos.x += controller_state.StickX * VR_TRANSLATION_SPEED
+        origin_sims_camera_pos.z += controller_state.StickY * VR_TRANSLATION_SPEED
+        vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+
+        # Rotational movement
+        extra_rotate += controler_rotation.y * VR_ROTATION_SPEED
+        vrdll.set_added_rotation(float(origin_rotate + extra_rotate))
+
+        # Pitch control
+        pitch_change = controler_rotation.x * VR_ROTATION_SPEED
+        cam_rot = get_cam_rot()
+        new_pitch = cam_rot.x + pitch_change
+        # Limit pitch to avoid uncomfortable angles
+        new_pitch = max(min(new_pitch, 89), -89)
+        
+        # We need to modify the camera's rotation matrix
+        # This is a simplified version and might need adjustment
+        pitch_rad = math.radians(new_pitch)
+        yaw_rad = math.radians(cam_rot.y)
+        vrdll.set_float_value(6, -math.sin(pitch_rad))  # Up vector Y
+        vrdll.set_float_value(7, math.cos(pitch_rad))   # Up vector Z
+        vrdll.set_float_value(9, math.cos(yaw_rad) * math.cos(pitch_rad))  # Forward vector X
+        vrdll.set_float_value(10, math.sin(pitch_rad))  # Forward vector Y
+        vrdll.set_float_value(11, math.sin(yaw_rad) * math.cos(pitch_rad))  # Forward vector Z
+
 
     if vorpx_loaded:
         #controller_state = _vpxGetControllerState(1)#get right controler state

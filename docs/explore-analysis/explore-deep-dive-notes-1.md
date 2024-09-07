@@ -92,7 +92,14 @@ exec(open("sync_packages.py").read())
 
 ```python
 def dprnt(txt):
-    # Custom logging implementation
+    global ModFolder
+    txt=str(txt)
+    now = datetime.datetime.now()
+    log_str = now.strftime("%Y-%m-%d %H:%M:%S")+": "+txt+"\n"
+    file_object = open(ModFolder+"\\debug_log.txt", 'a')
+    if file_object:
+        file_object.write(log_str)
+        file_object.close()
 ```
 
 
@@ -106,6 +113,7 @@ def dprnt(txt):
 
 ## Areas for Potential Improvement
 
+- More interesting sims cheat console commands for more control over the VR setting in `vrdll`
 - More robust error handling in compilation and DLL loading processes.
 - Consider using Python's logging module instead of custom logging function.
 - Implement user-friendly interface for adjusting VR settings.

@@ -3,7 +3,7 @@
 Unpacks and prints the current working directory's file structure, going through each folder.
 
 Command to run:
-`python3 file-structure-script.py | tee file-structure.md`
+`python3 file-structure-script.py | tee docs/file-structure.md`
 
 """
 
