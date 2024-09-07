@@ -40,14 +40,14 @@ def main(cpp_files, output_directory):
         
         if os.path.exists(input_file):
             logging.debug(f"File exists: {input_file}")
-            if input_file.endswith(".cpp"):
+            if input_file.endswith(".cpp") or input_file.endswith(".h"):
                 base_name = os.path.basename(input_file)
                 # Change this line to keep the .cpp extension
                 output_file = os.path.join(output_directory, base_name + ".txt")
                 logging.debug(f"Constructed output file path: {output_file}")
                 convert_cpp_to_text(input_file, output_file)
             else:
-                logging.warning(f"Skipping {input_file}: Not a .cpp file")
+                logging.warning(f"Skipping {input_file}: Not a .cpp or .h file")
         else:
             logging.error(f"File not found: {input_file}")
             logging.debug(f"Current working directory: {os.getcwd()}")
@@ -64,6 +64,8 @@ if __name__ == "__main__":
     cpp_files = [
         "src/vrdll/vrdll/dllmain.cpp",
         "src/vrdll/vrdll/OpenVR-DirectMode.cpp",
+        "src/vrdll/vrdll/dllmain.cpp",
+        "src/vrdll/vrdll/python_exports.h",
         # Add more file paths as needed
     ]
     

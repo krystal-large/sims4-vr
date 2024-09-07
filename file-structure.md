@@ -9,8 +9,20 @@ sims4-vr/
     README.md
     docs/
         initial-prompt.md
-        sims4-vr-exploration-plan.md
-        sims4-vr-mod-instructions.md
+        instructions.md
+        explore-analysis/
+            compile-py-analysis.md
+            dllmain-cpp-analysis.md
+            injector-py-analysis.md
+            main-py-analysis.md
+            openvr-directmode-cpp-analysis.md
+            openvr-directmode-h-analysis.md
+            rendering-pipeline-explanation.md
+            settings-py-analysis.md
+            sims4-vr-exploration-plan.md
+            sims4-vr-mod-analysis-compilation.md
+            surface-queue-h-analysis.md
+            threedmath-py-analysis.md
         explore-files/
             compile.py
             dllmain.cpp.txt
