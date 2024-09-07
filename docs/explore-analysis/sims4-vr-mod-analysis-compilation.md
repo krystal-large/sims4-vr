@@ -11,9 +11,10 @@
 7. [settings.py Analysis](#settingspy-analysis)
 8. [OpenVR-DirectMode.h Analysis](#openvr-directmodeh-analysis)
 9. [SurfaceQueue.h Analysis](#surfacequeueh-analysis)
-10. [Open Questions](#open-questions)
-11. [Next Steps](#next-steps)
-12. [Important Considerations](#important-considerations)
+10. [Sims 4 VR Mod Sequence Diagram](#sims-4-vr-mod-sequence-diagram)
+11. [Open Questions](#open-questions)
+12. [Next Steps](#next-steps)
+13. [Important Considerations](#important-considerations)
 
 # Sims 4 VR Mod File Analysis Summaries
 
@@ -52,8 +53,6 @@ The header file for the `OpenVRDirectMode` class. It declares the necessary stru
 ## SurfaceQueue.h Analysis
 
 Defines interfaces and structures for a surface queue system, crucial for managing rendering surfaces between different DirectX versions. It includes definitions for surface queue descriptors, producer and consumer interfaces, and a main surface queue interface. This system is likely key to efficient frame management in the VR rendering pipeline.
-
-## Process Diagram
 
 ## Sims 4 VR Mod Sequence Diagram
 
