@@ -85,33 +85,6 @@ dprnt("module loading initiated")
 pid = os.getpid()
 
 
-# Snapshot VR current properties to the log
-def snapshot_vr_properties():
-    dprnt("VR Properties Snapshot:")
-    dprnt(f"Headset Position: {headset_position}")
-    dprnt(f"Headset Rotation: {headset_rotation}")
-    dprnt(f"Origin Camera Position: {origin_sims_camera_pos}")
-    dprnt(f"Origin Rotate: {origin_rotate}")
-    dprnt(f"Extra Rotate: {extra_rotate}")
-    dprnt(f"Camera Position: {get_cam_pos()}")
-    dprnt(f"Camera Rotation: {get_cam_rot()}")
-
-log_dll_details()
-
-
-# Add this function to inspect and log DLL details
-def log_dll_details():
-    global vrdll
-    dprnt("s4vrlib.dll functions:")
-    for func_name in dir(vrdll):
-        if not func_name.startswith('_'):
-            func = getattr(vrdll, func_name)
-            if hasattr(func, 'argtypes'):
-                dprnt(f"  {func_name}: {func.argtypes} -> {func.restype}")
-            else:
-                dprnt(f"  {func_name}: No argument type information")
-
-log_dll_details()
 
 
 
@@ -398,6 +371,40 @@ try:
 except Exception as e:
     dprnt("could not load vrdll: "+ str(e))
     exit
+dprnt("loading vrdll successful")
+
+
+
+# Add this function to inspect and log DLL details
+def log_dll_details():
+    global vrdll
+    dprnt("s4vrlib.dll details:")
+    dprnt(f"s4vrlib.dll : {vrdll}")
+    dprnt(f"s4vrlib.dll type: {type(vrdll)}")
+    dprnt(f"s4vrlib.dll help: {help(vrdll)}")
+    dprnt(f"s4vrlib.dll dir: {dir(vrdll)}")
+    dprnt(f"s4vrlib.dll vars: {vars(vrdll)}")
+    dprnt(f"s4vrlib.dll __sizeof__: {vrdll.__sizeof__()}")
+
+    for x in vrdll:
+        dprnt("s4vrlib.dll element details:")
+        dprnt(f"s4vrlib.dll : {x}")
+        dprnt(f"s4vrlib.dll element type: {type(x)}")
+        dprnt(f"s4vrlib.dll element help: {help(x)}")
+        dprnt(f"s4vrlib.dll element dir: {dir(x)}")
+        dprnt(f"s4vrlib.dll element vars: {vars(x)}")
+
+    dprnt("s4vrlib.dll functions:")
+    for func_name in dir(vrdll):
+        if not func_name.startswith('_'):
+            func = getattr(vrdll, func_name)
+            if hasattr(func, 'argtypes'):
+                dprnt(f"  {func_name}: {func.argtypes} -> {func.restype}")
+            else:
+                dprnt(f"  {func_name}: No argument type information")
+
+log_dll_details()
+
 
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
@@ -1146,6 +1153,25 @@ def set_vr_controls(snapshot_button: int = None, translation_speed: float = None
     
     dprnt("VR control settings command execution completed")
     return True
+
+
+
+
+
+
+# Snapshot VR current properties to the log
+def snapshot_vr_properties():
+    dprnt("VR Properties Snapshot:")
+    dprnt(f"Headset Position: {headset_position}")
+    dprnt(f"Headset Rotation: {headset_rotation}")
+    dprnt(f"Origin Camera Position: {origin_sims_camera_pos}")
+    dprnt(f"Origin Camera Roration: {origin_sims_camera_rot}")
+    dprnt(f"Origin Rotate: {origin_rotate}")
+    dprnt(f"Extra Rotate: {extra_rotate}")
+    dprnt(f"Camera Position: {get_cam_pos()}")
+    dprnt(f"Camera Rotation: {get_cam_rot()}")
+
+snapshot_vr_properties()
 
 
 dprnt("Loaded VR Mod")
