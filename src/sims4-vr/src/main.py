@@ -28,6 +28,8 @@ from ReadWriteMemory import ReadWriteMemory
 import pyautogui
 import importlib.util
 import datetime
+from helpers.helper_logging import setup_logger, setup_exception_logging
+from helpers.helper_inspect import log_dll_details
 
 
 
@@ -70,25 +72,40 @@ class VPX_CONTROLLER_STATE(ctypes.Structure):
 
 ModFolder = os.path.dirname(os.path.dirname(__file__))
 
-#Function used to print debug information
-def dprnt(txt):
-    global ModFolder
-    txt=str(txt)
-    now = datetime.datetime.now()
-    log_str = now.strftime("%Y-%m-%d %H:%M:%S")+": "+txt+"\n"
-    file_object = open(ModFolder+"\\debug_log.txt", 'a')
-    if file_object:
-        file_object.write(log_str)
-        file_object.close()
+# #Function used to print debug information
+# def dprnt(txt):
+#     global ModFolder
+#     txt=str(txt)
+#     now = datetime.datetime.now()
+#     log_str = now.strftime("%Y-%m-%d %H:%M:%S")+": "+txt+"\n"
+#     file_object = open(ModFolder+"\\debug_log.txt", 'a')
+#     if file_object:
+#         file_object.write(log_str)
+#         file_object.close()
 
-dprnt("module loading initiated")
+# dprnt("module loading initiated")
+
+
+
+
+# Logging configuration
+LOG_DIR = os.path.join(ModFolder, 'logs')
+LOG_FILE = 'sims4_vr_mod.log'
+LOG_LEVEL = "DEBUG"  # You can change this to INFO for less verbose logging
+
+# Initialize logger
+logger = setup_logger(LOG_DIR, LOG_FILE, LOG_LEVEL)
+
+# Set up global exception handling
+setup_exception_logging(logger)
+
+logger.info("Module loading initiated")
+
+
+
+
 pid = os.getpid()
 
-
-
-
-
-#function we need is:
 _vpxInit = 0
 _vpxFree = 0
 _vpxIsActive = 0
@@ -143,10 +160,10 @@ def find_pach_locations():
     
     
     #Read in loots of memmory so we can search it
-    dprnt("Reading memmory")
+    logger.info("Reading memmory")
     mem_search_start_addr = 0x140000000
     memmory = process.readByte2(mem_search_start_addr, 0x144000000-mem_search_start_addr)
-    dprnt("Done reading memmory")
+    logger.info("Done reading memmory")
     process.close()
     
     #Search for code in the binary that is located where we want to patch the binary
@@ -165,7 +182,7 @@ def find_pach_locations():
         dprint("could not find code_injection_base_address")
     code_injection_base_address += mem_search_start_addr
     
-    dprnt("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address2: "+hex(Scale_patch_address2)+" code_injection_base_address: "+hex(code_injection_base_address))
+    logger.info("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address2: "+hex(Scale_patch_address2)+" code_injection_base_address: "+hex(code_injection_base_address))
     
     
 
@@ -239,7 +256,7 @@ def dump_mem():
     
     for x, patchlocation in enumerate(patchlocations):
         org_dat = process.readByte(patchlocation, 32)
-        dprnt("patchlocation: "+str(x)+"("+hex(patchlocation)+") = "+org_dat.hex())
+        logger.info("patchlocation: "+str(x)+"("+hex(patchlocation)+") = "+org_dat.hex())
         
     process.close()
 
@@ -273,7 +290,7 @@ def gscalew(scale_str: str="", _connection=None):
 def ptscale(_connection=None):
     global game_camera_scalew
     global game_camera_scale
-    dprnt("scale: "+str(game_camera_scale)+", "+str(game_camera_scalew))
+    logger.info("scale: "+str(game_camera_scale)+", "+str(game_camera_scalew))
 
 #Debug: add a render struct address manually
 @sims4.commands.Command('addptr', command_type=(sims4.commands.CommandType.Live))
@@ -301,7 +318,7 @@ def get_cam_pos():
         z_pos = ctypes.c_float.from_address(structpos+104)
         
         return (sims4.math.Vector3(x_pos.value, y_pos.value, z_pos.value))
-    dprnt("could not find a camera position, nr of chosen_structs = "+str(len(chosen_structs)))
+    logger.info("could not find a camera position, nr of chosen_structs = "+str(len(chosen_structs)))
     return False
 
 #Gets the camera rotation from game memmory
@@ -318,7 +335,7 @@ def tsl(_connection=None):
     global known_sruct_locations
     global chosen_structs
     
-    dprnt("Selecting chosen_structs, nr of known_sruct_locations = "+str(len(chosen_structs)))
+    logger.info("Selecting chosen_structs, nr of known_sruct_locations = "+str(len(chosen_structs)))
     chosen_structs = []
     chosen_structs2 = []
     first = True
@@ -334,76 +351,58 @@ def tsl(_connection=None):
             #    first = False
 
             #TODO there is a bug here as we allow multiple structs
-            dprnt("posible struct: "+ hex(structpos))
+            logger.info("posible struct: "+ hex(structpos))
             chosen_structs2.append(structpos)
             
             
     if len(chosen_structs2) < 1:
-        dprnt("Could not find any matching structs");
+        logger.info("Could not find any matching structs");
         return(0)
 
     if len(chosen_structs2) > 1:
-        dprnt("To many matching structs, picking the last one");
+        logger.info("To many matching structs, picking the last one");
     
     structpos = chosen_structs2.pop()
     chosen_structs.append(structpos)
     sims_camera_address_compare.value = structpos
     vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
-    dprnt("chosen struct: "+ hex(structpos)+ " pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
+    logger.info("chosen struct: "+ hex(structpos)+ " pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
 
     #vr_act()#NOV-30-2022 This should not be here just for temp testing
 
 
 open_vr_modpath = ModFolder+"\\openvr_api.dll"
 
-dprnt("loading openvr_api")
+logger.info("loading openvr_api")
 # it is not needed in python but the dll does not know the path at which it is loaded so we load it before the dll tries to load it
 try:
-    ctypes.CDLL(open_vr_modpath)
+    ovrdll = ctypes.CDLL(open_vr_modpath)
 except Exception as e:
-    dprnt("could not load openvr_api.dll: "+ str(e))
+    logger.exception("could not load openvr_api.dll: "+ str(e))
+
+
 
 vr_dll_modpath = ModFolder+"\\s4vrlib.dll"
-dprnt("loading vrdll: "+vr_dll_modpath)
+logger.info("loading vrdll: "+vr_dll_modpath)
 vrdll = False
 try:
     vrdll = ctypes.CDLL(vr_dll_modpath)
 except Exception as e:
-    dprnt("could not load vrdll: "+ str(e))
+    logger.exception("could not load vrdll: "+ str(e))
     exit
-dprnt("loading vrdll successful")
+logger.info("loading vrdll successful")
+
+
+try:
+    logger.info("Starting log_dll_details...")
+    log_dll_details(ovrdll, logger)
+    log_dll_details(vrdll, logger)
+    logger.info("Finished log_dll_details!")
+except Exception as e:
+    logger.exception("An error occurred during log_dll_details")
 
 
 
-# Add this function to inspect and log DLL details
-def log_dll_details():
-    global vrdll
-    dprnt("s4vrlib.dll details:")
-    dprnt(f"s4vrlib.dll : {vrdll}")
-    dprnt(f"s4vrlib.dll type: {type(vrdll)}")
-    dprnt(f"s4vrlib.dll help: {help(vrdll)}")
-    dprnt(f"s4vrlib.dll dir: {dir(vrdll)}")
-    dprnt(f"s4vrlib.dll vars: {vars(vrdll)}")
-    dprnt(f"s4vrlib.dll __sizeof__: {vrdll.__sizeof__()}")
-
-    for x in vrdll:
-        dprnt("s4vrlib.dll element details:")
-        dprnt(f"s4vrlib.dll : {x}")
-        dprnt(f"s4vrlib.dll element type: {type(x)}")
-        dprnt(f"s4vrlib.dll element help: {help(x)}")
-        dprnt(f"s4vrlib.dll element dir: {dir(x)}")
-        dprnt(f"s4vrlib.dll element vars: {vars(x)}")
-
-    dprnt("s4vrlib.dll functions:")
-    for func_name in dir(vrdll):
-        if not func_name.startswith('_'):
-            func = getattr(vrdll, func_name)
-            if hasattr(func, 'argtypes'):
-                dprnt(f"  {func_name}: {func.argtypes} -> {func.restype}")
-            else:
-                dprnt(f"  {func_name}: No argument type information")
-
-log_dll_details()
 
 
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
@@ -418,12 +417,9 @@ vrdll.set_follow.argtypes = [ctypes.c_int]
 vrdll.get_float_value.argtypes = [ctypes.c_int]
 vrdll.get_float_value.restype  = ctypes.c_float
 
-vrdll.set_float_value.argtypes = [ctypes.c_int, ctypes.c_float]
-vrdll.set_float_value.restype = ctypes.c_float
-
-dprnt("initiating vrdll")
+logger.info("initiating vrdll")
 vrdll.init()
-dprnt("initiation done")
+logger.info("initiation done")
 
 
 vrdll.set_scale(game_camera_scalew, game_camera_scale)
@@ -486,7 +482,7 @@ def call_patch():
     #jump back
     jump_to_code += b'\xFF\x25\x00\x00\x00\x00'
     jump_to_code += (code_injection_base2_address+14).to_bytes(8,'little')
-    dprnt("creating patch function")
+    logger.info("creating patch function")
     jump_to = create_x86_x64_function(jump_to_code)
     
     injection_code = b'\xFF\x25\x00\x00\x00\x00'
@@ -494,17 +490,17 @@ def call_patch():
     injection_code += b'\x90'#We add noop after as it is important for the instructions to tatch length
     
     
-    dprnt("jmp "+hex(jump_to))
+    logger.info("jmp "+hex(jump_to))
     
-    dprnt("injecting patch function jump")
+    logger.info("injecting patch function jump")
     process.writeByte(code_injection_base2_address, injection_code)#Write new code
-    dprnt("injectied")
+    logger.info("injectied")
     process.close()
 
-dprnt("patching sims4 binary in memory")
+logger.info("patching sims4 binary in memory")
 if using_dll:
     call_patch()
-dprnt("patching sims4 done")
+logger.info("patching sims4 done")
 
 #patch() is an old function that is no longer used, should be removed
 @sims4.commands.Command('patch', command_type=(sims4.commands.CommandType.Live))
@@ -630,8 +626,8 @@ def on_gfx_frame():
     
     second = datetime.datetime.now().strftime("%S")
     if second != last_second:
-        #dprnt("cam: "+str(camera._camera_position.x)+", "+str(camera._camera_position.y)+", "+str(camera._camera_position.z))
-        #dprnt("fps: "+str(ticks_p_s))
+        #logger.info("cam: "+str(camera._camera_position.x)+", "+str(camera._camera_position.y)+", "+str(camera._camera_position.z))
+        #logger.info("fps: "+str(ticks_p_s))
         ticks_p_s = 0
         last_second = second
     
@@ -655,7 +651,7 @@ def on_gfx_frame():
             headset_position = _vpxYawCorrection(headset_position_struct, float(origin_rotate+extra_rotate))
             
         except Exception as e:
-            dprnt("failed using _vpxGetControllerState: "+str(e))
+            logger.info("failed using _vpxGetControllerState: "+str(e))
     
     
     if vr_active:
@@ -726,7 +722,7 @@ def on_game_frame():
     
     if sims_camera_address.value != 4545:
         if sims_camera_address.value not in known_sruct_locations:
-            dprnt("Added new known_sruct_locations: "+str(sims_camera_address.value))
+            logger.info("Added new known_sruct_locations: "+str(sims_camera_address.value))
             known_sruct_locations.append(sims_camera_address.value)
     
     
@@ -738,7 +734,7 @@ def on_game_frame():
     controller_state.Grip = 0
     controler_rotation = sims4.math.Vector3(0, 0, 0)
 
-    dprnt("btnpres: "+str(controller_state.ButtonsPressed))
+    logger.info("btnpres: "+str(controller_state.ButtonsPressed))
 
     if headset_rotation != 0:
         controler_rotation = sims4.math.Vector3(headset_rotation.x, headset_rotation.y, headset_rotation.z)#TODO jan 29 hack to make movments work with camera
@@ -760,33 +756,33 @@ def on_game_frame():
     if controller_state.ButtonsPressed == VR_SNAPSHOT_BUTTON:
         snapshot_vr_properties()
 
-    # VR Camera Control
-    if vr_active:
-        # Translational movement
-        origin_sims_camera_pos.x += controller_state.StickX * VR_TRANSLATION_SPEED
-        origin_sims_camera_pos.z += controller_state.StickY * VR_TRANSLATION_SPEED
-        vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+    # # VR Camera Control
+    # if vr_active:
+    #     # Translational movement
+    #     origin_sims_camera_pos.x += controller_state.StickX * VR_TRANSLATION_SPEED
+    #     origin_sims_camera_pos.z += controller_state.StickY * VR_TRANSLATION_SPEED
+    #     vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
 
-        # Rotational movement
-        extra_rotate += controler_rotation.y * VR_ROTATION_SPEED
-        vrdll.set_added_rotation(float(origin_rotate + extra_rotate))
+    #     # Rotational movement
+    #     extra_rotate += controler_rotation.y * VR_ROTATION_SPEED
+    #     vrdll.set_added_rotation(float(origin_rotate + extra_rotate))
 
-        # Pitch control
-        pitch_change = controler_rotation.x * VR_ROTATION_SPEED
-        cam_rot = get_cam_rot()
-        new_pitch = cam_rot.x + pitch_change
-        # Limit pitch to avoid uncomfortable angles
-        new_pitch = max(min(new_pitch, 89), -89)
+    #     # Pitch control
+    #     pitch_change = controler_rotation.x * VR_ROTATION_SPEED
+    #     cam_rot = get_cam_rot()
+    #     new_pitch = cam_rot.x + pitch_change
+    #     # Limit pitch to avoid uncomfortable angles
+    #     new_pitch = max(min(new_pitch, 89), -89)
         
-        # We need to modify the camera's rotation matrix
-        # This is a simplified version and might need adjustment
-        pitch_rad = math.radians(new_pitch)
-        yaw_rad = math.radians(cam_rot.y)
-        vrdll.set_float_value(6, -math.sin(pitch_rad))  # Up vector Y
-        vrdll.set_float_value(7, math.cos(pitch_rad))   # Up vector Z
-        vrdll.set_float_value(9, math.cos(yaw_rad) * math.cos(pitch_rad))  # Forward vector X
-        vrdll.set_float_value(10, math.sin(pitch_rad))  # Forward vector Y
-        vrdll.set_float_value(11, math.sin(yaw_rad) * math.cos(pitch_rad))  # Forward vector Z
+    #     # We need to modify the camera's rotation matrix
+    #     # This is a simplified version and might need adjustment
+    #     pitch_rad = math.radians(new_pitch)
+    #     yaw_rad = math.radians(cam_rot.y)
+    #     vrdll.set_float_value(6, -math.sin(pitch_rad))  # Up vector Y
+    #     vrdll.set_float_value(7, math.cos(pitch_rad))   # Up vector Z
+    #     vrdll.set_float_value(9, math.cos(yaw_rad) * math.cos(pitch_rad))  # Forward vector X
+    #     vrdll.set_float_value(10, math.sin(pitch_rad))  # Forward vector Y
+    #     vrdll.set_float_value(11, math.sin(yaw_rad) * math.cos(pitch_rad))  # Forward vector Z
 
 
     if vorpx_loaded:
@@ -819,7 +815,7 @@ def on_game_frame():
     if controller_state.ButtonsPressed != 0:
         hold_b_button_frame_counter += 1
         if hold_b_button_frame_counter == 20:
-            dprnt("button hold down for long: "+str(last_btns_press))
+            logger.info("button hold down for long: "+str(last_btns_press))
             #if last_btns_press == 2:#B was pressed long, 
             #    pyautogui.press('somebutton')
                 
@@ -828,7 +824,7 @@ def on_game_frame():
     else:
         if last_btns_press != controller_state.ButtonsPressed:
             if hold_b_button_frame_counter < 20:
-                dprnt("button was clicked quickly: "+str(last_btns_press))
+                logger.info("button was clicked quickly: "+str(last_btns_press))
                 #if last_btns_press == 1:#A was pressed short, click mouse
                 #    pyautogui.click()
                 if last_btns_press == 1:#A was pressed short, reset position
@@ -851,7 +847,7 @@ def on_game_frame():
                     vrdll.set_follow(follow_active)
                     
                 if last_btns_press == 2:#B was pressed short, initate vr (should also  press tab+shit to enter fps mode)
-                    dprnt("#B was pressed short, start vr")
+                    logger.info("#B was pressed short, start vr")
                     vr_tog = True
         
     if vr_tog:
@@ -897,7 +893,7 @@ def on_game_frame():
     if last_btns_press != controller_state.ButtonsPressed:
         hold_b_button_frame_counter = 0
         last_btns_press = controller_state.ButtonsPressed
-        dprnt("button change: "+str(last_btns_press))
+        logger.info("button change: "+str(last_btns_press))
         
         
     #if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
@@ -920,7 +916,7 @@ def on_game_frame():
                 origin_sims_camera_pos.x += math.sin(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
                 origin_sims_camera_pos.z += -math.cos(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
                 origin_sims_camera_pos.y -= math.sin(math.radians(controler_rotation.x))*0.05*controller_state.StickY
-                dprnt("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
+                logger.info("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
                 vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
             
         if controller_state.StickX > 0.5 or controller_state.StickX < -0.5:
@@ -1059,7 +1055,7 @@ def _py(cmd: str="", cmda: str="", cmdb: str="", cmdc: str="", _connection=None)
         output("Exception: "+ str(e))
 
 
-dprnt("Initiate Debug TCP connection")
+logger.info("Initiate Debug TCP connection")
 if True:
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1072,7 +1068,7 @@ if True:
         s.send(b'python shell:')
         connected = True
     except Exception as e:
-        dprnt("Failed to connect to debug connection: "+str(e))
+        logger.info("Failed to connect to debug connection: "+str(e))
 
 def se(dat):
     global s
@@ -1098,61 +1094,61 @@ def handle_dbg_com():
                 se("Exception: "+ str(e))
         
 
-@sims4.commands.Command('vr_set_controls', command_type=sims4.commands.CommandType.Live)
-def set_vr_controls(snapshot_button: int = None, translation_speed: float = None, rotation_speed: float = None, _connection=None):
-    """
-    Sets or displays VR control settings.
+# @sims4.commands.Command('vr_set_controls', command_type=sims4.commands.CommandType.Live)
+# def set_vr_controls(snapshot_button: int = None, translation_speed: float = None, rotation_speed: float = None, _connection=None):
+#     """
+#     Sets or displays VR control settings.
 
-    Usage in Sims 4 cheat console:
-    - Set all values: vr_set_controls <snapshot_button> <translation_speed> <rotation_speed>
-      Example: vr_set_controls 4 0.01 1.0
+#     Usage in Sims 4 cheat console:
+#     - Set all values: vr_set_controls <snapshot_button> <translation_speed> <rotation_speed>
+#       Example: vr_set_controls 4 0.01 1.0
 
-    - Set individual values:
-      vr_set_controls snapshot_button:<value>
-      vr_set_controls translation_speed:<value>
-      vr_set_controls rotation_speed:<value>
-      Example: vr_set_controls snapshot_button:5
-               vr_set_controls translation_speed:0.02
-               vr_set_controls rotation_speed:1.5
+#     - Set individual values:
+#       vr_set_controls snapshot_button:<value>
+#       vr_set_controls translation_speed:<value>
+#       vr_set_controls rotation_speed:<value>
+#       Example: vr_set_controls snapshot_button:5
+#                vr_set_controls translation_speed:0.02
+#                vr_set_controls rotation_speed:1.5
 
-    - View current settings: vr_set_controls
+#     - View current settings: vr_set_controls
 
-    Parameters:
-    snapshot_button (int): Button number for taking VR snapshots
-    translation_speed (float): Speed of camera translation
-    rotation_speed (float): Speed of camera rotation
+#     Parameters:
+#     snapshot_button (int): Button number for taking VR snapshots
+#     translation_speed (float): Speed of camera translation
+#     rotation_speed (float): Speed of camera rotation
 
-    If no parameters are provided, displays current settings.
-    If any parameter is provided, updates the corresponding setting.
-    """
-    global VR_SNAPSHOT_BUTTON, VR_TRANSLATION_SPEED, VR_ROTATION_SPEED
+#     If no parameters are provided, displays current settings.
+#     If any parameter is provided, updates the corresponding setting.
+#     """
+#     global VR_SNAPSHOT_BUTTON, VR_TRANSLATION_SPEED, VR_ROTATION_SPEED
     
-    output = sims4.commands.CheatOutput(_connection)
+#     output = sims4.commands.CheatOutput(_connection)
     
-    dprnt(f"VR control settings command called with parameters: snapshot_button={snapshot_button}, translation_speed={translation_speed}, rotation_speed={rotation_speed}")
+#     logger.info(f"VR control settings command called with parameters: snapshot_button={snapshot_button}, translation_speed={translation_speed}, rotation_speed={rotation_speed}")
 
-    if snapshot_button is not None:
-        VR_SNAPSHOT_BUTTON = int(snapshot_button)
-        output(f"VR Snapshot button set to: {VR_SNAPSHOT_BUTTON}")
-        dprnt(f"VR Snapshot button updated to: {VR_SNAPSHOT_BUTTON}")
+#     if snapshot_button is not None:
+#         VR_SNAPSHOT_BUTTON = int(snapshot_button)
+#         output(f"VR Snapshot button set to: {VR_SNAPSHOT_BUTTON}")
+#         logger.info(f"VR Snapshot button updated to: {VR_SNAPSHOT_BUTTON}")
     
-    if translation_speed is not None:
-        VR_TRANSLATION_SPEED = float(translation_speed)
-        output(f"VR Translation speed set to: {VR_TRANSLATION_SPEED}")
-        dprnt(f"VR Translation speed updated to: {VR_TRANSLATION_SPEED}")
+#     if translation_speed is not None:
+#         VR_TRANSLATION_SPEED = float(translation_speed)
+#         output(f"VR Translation speed set to: {VR_TRANSLATION_SPEED}")
+#         logger.info(f"VR Translation speed updated to: {VR_TRANSLATION_SPEED}")
     
-    if rotation_speed is not None:
-        VR_ROTATION_SPEED = float(rotation_speed)
-        output(f"VR Rotation speed set to: {VR_ROTATION_SPEED}")
-        dprnt(f"VR Rotation speed updated to: {VR_ROTATION_SPEED}")
+#     if rotation_speed is not None:
+#         VR_ROTATION_SPEED = float(rotation_speed)
+#         output(f"VR Rotation speed set to: {VR_ROTATION_SPEED}")
+#         logger.info(f"VR Rotation speed updated to: {VR_ROTATION_SPEED}")
     
-    if snapshot_button is None and translation_speed is None and rotation_speed is None:
-        current_settings = f"Current VR control settings:\n  Snapshot button: {VR_SNAPSHOT_BUTTON}\n  Translation speed: {VR_TRANSLATION_SPEED}\n  Rotation speed: {VR_ROTATION_SPEED}"
-        output(current_settings)
-        dprnt(f"VR control settings displayed: {current_settings}")
+#     if snapshot_button is None and translation_speed is None and rotation_speed is None:
+#         current_settings = f"Current VR control settings:\n  Snapshot button: {VR_SNAPSHOT_BUTTON}\n  Translation speed: {VR_TRANSLATION_SPEED}\n  Rotation speed: {VR_ROTATION_SPEED}"
+#         output(current_settings)
+#         logger.info(f"VR control settings displayed: {current_settings}")
     
-    dprnt("VR control settings command execution completed")
-    return True
+#     logger.info("VR control settings command execution completed")
+#     return True
 
 
 
@@ -1161,18 +1157,18 @@ def set_vr_controls(snapshot_button: int = None, translation_speed: float = None
 
 # Snapshot VR current properties to the log
 def snapshot_vr_properties():
-    dprnt("VR Properties Snapshot:")
-    dprnt(f"Headset Position: {headset_position}")
-    dprnt(f"Headset Rotation: {headset_rotation}")
-    dprnt(f"Origin Camera Position: {origin_sims_camera_pos}")
-    dprnt(f"Origin Camera Roration: {origin_sims_camera_rot}")
-    dprnt(f"Origin Rotate: {origin_rotate}")
-    dprnt(f"Extra Rotate: {extra_rotate}")
-    dprnt(f"Camera Position: {get_cam_pos()}")
-    dprnt(f"Camera Rotation: {get_cam_rot()}")
+    logger.info("VR Properties Snapshot:")
+    logger.info(f"Headset Position: {headset_position}")
+    logger.info(f"Headset Rotation: {headset_rotation}")
+    logger.info(f"Origin Camera Position: {origin_sims_camera_pos}")
+    logger.info(f"Origin Camera Roration: {origin_sims_camera_rot}")
+    logger.info(f"Origin Rotate: {origin_rotate}")
+    logger.info(f"Extra Rotate: {extra_rotate}")
+    logger.info(f"Camera Position: {get_cam_pos()}")
+    logger.info(f"Camera Rotation: {get_cam_rot()}")
 
 snapshot_vr_properties()
 
 
-dprnt("Loaded VR Mod")
+logger.info("Loaded VR Mod")
 

@@ -5,7 +5,7 @@ sims4-vr/
     .gitignore
     cpp-to-text-converter.py
     file-structure-script.py
-    file-structure.md
+    my-umatrix-rules.txt
     README.md
     docs/
         file-structure.md
@@ -14,6 +14,7 @@ sims4-vr/
         explore-analysis/
             camera-interface-explained.md
             compile-py-analysis.md
+            dll-inspection-summary.md
             dllmain-cpp-analysis.md
             explore-deep-dive-notes-1.md
             injector-py-analysis.md
@@ -26,6 +27,7 @@ sims4-vr/
             sims4-vr-mod-analysis-compilation.md
             surface-queue-h-analysis.md
             threedmath-py-analysis.md
+            vr-camera-mod-1.md
         explore-files/
             compile.py
             dllmain.cpp.txt
@@ -47,6 +49,7 @@ sims4-vr/
             bundle_build.py
             cleanup.py
             compile.py
+            compile_log.txt
             debug_setup.py
             debug_teardown.py
             decompile.py
@@ -65,64 +68,6 @@ sims4-vr/
                 convexvr_sims4-vr.ts4script
                 openvr_api.dll
                 s4vrlib.dll
-                convexvr_sims4-vr-bundle/
-                    convexvr_sims4-vr/
-                        convexvr_sims4-vr.ts4script.zip
-                        openvr_api.dll
-                        s4vrlib.dll
-                        convexvr_sims4-vr.ts4script/
-                            main.py
-                            main.pyc
-                            ctypes/
-                                util.py
-                                util.pyc
-                                wintypes.py
-                                wintypes.pyc
-                                _aix.py
-                                _aix.pyc
-                                _endian.py
-                                _endian.pyc
-                                __init__.py
-                                __init__.pyc
-                                macholib/
-                                    dyld.py
-                                    dyld.pyc
-                                    dylib.py
-                                    dylib.pyc
-                                    fetch_macholib
-                                    fetch_macholib.bat
-                                    framework.py
-                                    framework.pyc
-                                    __init__.py
-                                    __init__.pyc
-                            helpers/
-                                injector.py
-                                injector.pyc
-                                threedmath.py
-                                threedmath.pyc
-                                __init__.py
-                                __init__.pyc
-                            pyautogui/
-                                _pyautogui_win.py
-                                _pyautogui_win.pyc
-                                __init__.py
-                                __init__.pyc
-                                __main__.py
-                                __main__.pyc
-                            pygetwindow/
-                                _pygetwindow_win.py
-                                _pygetwindow_win.pyc
-                                __init__.py
-                                __init__.pyc
-                            pyrect/
-                                __init__.py
-                                __init__.pyc
-                            pyscreeze/
-                                __init__.py
-                                __init__.pyc
-                            ReadWriteMemory/
-                                __init__.py
-                                __init__.pyc
             src/
                 main.py
                 ctypes/
@@ -140,6 +85,8 @@ sims4-vr/
                         README.ctypes
                         __init__.py
                 helpers/
+                    helper_inspect.py
+                    helper_logging.py
                     injector.py
                     threedmath.py
                     __init__.py
@@ -168,11 +115,16 @@ sims4-vr/
                 helpers_time.py
                 __init__.py
                 __pycache__/
+                    helpers_compile.cpython-310.pyc
                     helpers_compile.cpython-311.pyc
+                    helpers_path.cpython-310.pyc
                     helpers_path.cpython-311.pyc
+                    helpers_symlink.cpython-310.pyc
                     helpers_symlink.cpython-311.pyc
+                    __init__.cpython-310.pyc
                     __init__.cpython-311.pyc
             __pycache__/
+                settings.cpython-310.pyc
                 settings.cpython-311.pyc
         vrdll/
             d3d9_defs.h
