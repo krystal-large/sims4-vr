@@ -30,6 +30,42 @@ import importlib.util
 import datetime
 from helpers.helper_logging import setup_logger, setup_exception_logging
 from helpers.helper_inspect import log_dll_details
+from helpers.helper_inspect import log_python_environment, log_module_details
+
+
+
+ModFolder = os.path.dirname(os.path.dirname(__file__))
+
+# Logging configuration
+LOG_DIR = os.path.join(ModFolder, 'logs')
+LOG_FILE = 'sims4_vr_mod.log'
+LOG_LEVEL = "DEBUG"  # You can change this to INFO for less verbose logging
+
+# Initialize logger
+logger = setup_logger(LOG_DIR, LOG_FILE, LOG_LEVEL)
+
+# Set up global exception handling
+setup_exception_logging(logger)
+
+logger.info("Module loading initiated")
+
+
+
+
+try:
+    logger.info("Starting log_python_environment and log_module_details...")
+
+    # Log Python environment details
+    log_python_environment(logger)
+
+    # Log details of imported modules
+    log_module_details('camera', logger)
+    log_module_details('services', logger)
+    log_module_details('sims4', logger)
+
+    logger.info("Finished log_python_environment and log_module_details!")
+except Exception as e:
+    logger.exception("An error occurred during log_python_environment and log_module_details")
 
 
 
@@ -70,36 +106,7 @@ class VPX_CONTROLLER_STATE(ctypes.Structure):
     ]
 
 
-ModFolder = os.path.dirname(os.path.dirname(__file__))
 
-# #Function used to print debug information
-# def dprnt(txt):
-#     global ModFolder
-#     txt=str(txt)
-#     now = datetime.datetime.now()
-#     log_str = now.strftime("%Y-%m-%d %H:%M:%S")+": "+txt+"\n"
-#     file_object = open(ModFolder+"\\debug_log.txt", 'a')
-#     if file_object:
-#         file_object.write(log_str)
-#         file_object.close()
-
-# dprnt("module loading initiated")
-
-
-
-
-# Logging configuration
-LOG_DIR = os.path.join(ModFolder, 'logs')
-LOG_FILE = 'sims4_vr_mod.log'
-LOG_LEVEL = "DEBUG"  # You can change this to INFO for less verbose logging
-
-# Initialize logger
-logger = setup_logger(LOG_DIR, LOG_FILE, LOG_LEVEL)
-
-# Set up global exception handling
-setup_exception_logging(logger)
-
-logger.info("Module loading initiated")
 
 
 
